@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
+  <title id="title">HPCOM logo</title>
+  <desc id="desc">White H rails joined by five tall, colored protocol-frame blocks, above a clean HPCOM wordmark.</desc>
+
+  <!-- Main H rails -->
+  <rect x="110" y="90" width="230" height="740" rx="54" fill="#FFFFFF"/>
+  <rect x="860" y="90" width="230" height="740" rx="54" fill="#FFFFFF"/>
+
+  <!-- Five protocol frames: together they bridge the two rails. -->
+  <rect x="340" y="140" width="97.6" height="640" rx="28" fill="#FF5A5F"/>
+  <rect x="445.6" y="140" width="97.6" height="640" rx="28" fill="#FF8A3D"/>
+  <rect x="551.2" y="140" width="97.6" height="640" rx="28" fill="#FFC542"/>
+  <rect x="656.8" y="140" width="97.6" height="640" rx="28" fill="#22C7D8"/>
+  <rect x="762.4" y="140" width="97.6" height="640" rx="28" fill="#D946EF"/>
+
+  <!-- Deliberately font-based wordmark: clean, searchable, and easy to replace at brand-finalization. -->
+  <text x="600" y="1045" text-anchor="middle" fill="#FFFFFF"
+        font-family="Arial, Helvetica, sans-serif" font-size="190" font-weight="700" letter-spacing="-7">HPCOM</text>
+</svg>

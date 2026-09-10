@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
+  <title id="title">HPCOM mark</title>
+  <desc id="desc">Two white H rails bridged by five tall, colored protocol-frame blocks.</desc>
+
+  <!-- White H rails -->
+  <rect x="110" y="140" width="230" height="920" rx="54" fill="#FFFFFF"/>
+  <rect x="860" y="140" width="230" height="920" rx="54" fill="#FFFFFF"/>
+
+  <!-- Five vertically extended protocol frames; their outer edges touch each rail. -->
+  <rect x="340" y="160" width="97.6" height="880" rx="28" fill="#FF5A5F"/>
+  <rect x="445.6" y="160" width="97.6" height="880" rx="28" fill="#FF8A3D"/>
+  <rect x="551.2" y="160" width="97.6" height="880" rx="28" fill="#FFC542"/>
+  <rect x="656.8" y="160" width="97.6" height="880" rx="28" fill="#22C7D8"/>
+  <rect x="762.4" y="160" width="97.6" height="880" rx="28" fill="#D946EF"/>
+</svg>

@@ -1,0 +1,11 @@
+[package]
+name = "hcom-core"
+version = "0.1.0"
+edition = "2021"
+description = "HCOM serial and protocol core"
+
+[[bin]]
+name = "hcom-core"
+path = "src/main.rs"
+
+[dependencies]

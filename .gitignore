@@ -1,0 +1,22 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# IDEs and local environment
+.idea/
+.vscode/
+*.iml
+.env
+.tooling/
+
+# Rust
+core/target/
+
+# Local logs and captures
+*.log
+captures/
+# Widget Preview related
+.widget_preview/

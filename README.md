@@ -36,6 +36,21 @@
 1. **写速快** —— 决定能否自用与开源同步推进
 2. **不能一卡一卡** —— 调试工具，性能是生命线
 
+## 🛠️ Phase 1 开发入口
+
+- Flutter UI 源码：`lib/`
+- Rust Core 源码：`core/`
+- 前后端 IPC 契约：`protocol/stdio-ndjson.md`（子进程 stdio 上的 NDJSON）
+- 本地初始化与校验：`scripts/bootstrap.ps1`；追加 `-Build` 会构建 Rust Core 与 Windows EXE。
+
+首次在新机器准备工具链后，执行：
+
+```powershell
+.\scripts\bootstrap.ps1 -Build
+```
+
+需要 Flutter stable（含 Windows desktop support）与 Rust stable。当前阶段 Core 仅验证 IPC，真实 COM 串口读写从 Phase 2 开始。
+
 ## 🔗 相关
 
 - 仓库：`https://github.com/Tylenoler/HCOM`
