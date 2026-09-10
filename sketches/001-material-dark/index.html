@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HCOM · 调试助手 — 原型 001 (Material Dark)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1419; --bg-2:#171d26; --bg-3:#1f2630;
+    --border:#2a3240; --border-2:#333c4a;
+    --fg:#e6edf3; --fg-2:#9da8b5; --fg-3:#6b7684;
+    --accent:#4c8dff; --accent-2:#6ea8ff;
+    --rx:#3b82f6; --tx:#22c55e;
+    --ok:#22c55e; --warn:#eab308; --err:#ef4444;
+    --mono:'JetBrains Mono',monospace;
+    --sans:'Inter',-apple-system,"Segoe UI",sans-serif;
+    --radius:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--sans);background:var(--bg);color:var(--fg);
+    -webkit-font-smoothing:antialiased;font-size:13px;line-height:1.5;
+    overflow:hidden;
+  }
+  .app{display:flex;flex-direction:column;height:100vh}
+
+  /* ===== Top toolbar ===== */
+  .toolbar{
+    height:46px;flex:0 0 46px;display:flex;align-items:center;gap:12px;
+    padding:0 14px;background:var(--bg-2);border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;letter-spacing:.3px}
+  .brand .logo{
+    width:24px;height:24px;border-radius:6px;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--accent),#7c5cff);color:#fff;font-size:12px;font-weight:800;
+  }
+  .tb-div{width:1px;height:22px;background:var(--border)}
+  .tb-btn{
+    display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;
+    background:transparent;border:1px solid transparent;color:var(--fg-2);
+    font-size:12px;cursor:pointer;transition:.15s;font-family:var(--sans);
+  }
+  .tb-btn:hover{background:var(--bg-3);color:var(--fg)}
+  .tb-btn.primary{background:var(--accent);color:#fff;border-color:transparent;font-weight:600}
+  .tb-btn.primary:hover{background:var(--accent-2)}
+  .tb-btn .dot{width:6px;height:6px;border-radius:50%;background:var(--fg-3)}
+  .spacer{flex:1}
+  .tb-status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--fg-2)}
+  .pill{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;background:var(--bg-3);border:1px solid var(--border)}
+  .pill i{width:7px;height:7px;border-radius:50%;background:var(--fg-3)}
+  .pill.on i{background:var(--ok)}
+  .pill.on{color:var(--ok)}
+
+  /* ===== Main row: sidebar L | center | sidebar R ===== */
+  .main{flex:1;display:flex;min-height:0}
+
+  .sidebar{width:190px;flex:0 0 190px;background:var(--bg-2);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+  .sidebar.collapsed{width:46px;flex-basis:46px}
+  .sb-head{padding:12px 12px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--fg-3);display:flex;align-items:center;justify-content:space-between}
+  .sb-collapse{cursor:pointer;color:var(--fg-3);padding:2px;border-radius:4px}
+  .sb-collapse:hover{color:var(--fg);background:var(--bg-3)}
+  .proto-list{flex:1;overflow-y:auto;padding:4px 6px}
+  .proto{
+    display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:6px;cursor:pointer;margin-bottom:2px;transition:.15s;color:var(--fg-2);
+  }
+  .proto:hover{background:var(--bg-3);color:var(--fg)}
+  .proto.active{background:var(--accent);color:#fff;font-weight:600}
+  .proto .ic{width:18px;text-align:center;font-size:13px;opacity:.9}
+  .sb-foot{padding:8px;border-top:1px solid var(--border)}
+  .sb-foot .set{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:6px;cursor:pointer;color:var(--fg-2)}
+  .sb-foot .set:hover{background:var(--bg-3);color:var(--fg)}
+
+  .center{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+
+  /* 上层：端口配置 */
+  .config-bar{
+    padding:10px 14px;background:var(--bg-2);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  }
+  .cfg{display:flex;flex-direction:column;gap:3px;min-width:84px}
+  .cfg .lbl{font-size:10px;color:var(--fg-3);text-transform:uppercase;letter-spacing:.6px}
+  .cfg .val{font-size:13px;color:var(--fg);font-weight:500}
+  .cfg select,.cfg input{
+    background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--fg);
+    font-size:12px;padding:5px 8px;font-family:var(--mono);outline:none;width:100%;
+  }
+  .cfg select:hover,.cfg input:hover{border-color:var(--border-2)}
+  .conn-sep{width:1px;height:30px;background:var(--border)}
+  .conn-status{
+    display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:6px;
+    border:1px solid var(--border);background:var(--bg-3);font-size:12px;color:var(--fg-2);
+  }
+  .conn-status i{width:8px;height:8px;border-radius:50%;background:var(--fg-3)}
+  .conn-status.connecting i{background:var(--warn)}
+  .conn-status.connected i{background:var(--ok)}
+  .conn-btn{
+    padding:7px 16px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--sans);
+    background:var(--accent);color:#fff;transition:.15s;
+  }
+  .conn-btn:hover{background:var(--accent-2)}
+  .conn-btn.disconnected{background:var(--err)}
+
+  /* 中层：数据流主视图 (TABS) */
+  .stream-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
+  .tabs{display:flex;gap:4px;padding:8px 12px 0;border-bottom:1px solid var(--border);background:var(--bg)}
+  .tab{
+    padding:8px 16px;border-radius:8px 8px 0 0;cursor:pointer;font-size:13px;color:var(--fg-2);
+    border:1px solid transparent;border-bottom:none;transition:.15s;font-family:var(--sans);
+  }
+  .tab:hover{color:var(--fg);background:var(--bg-2)}
+  .tab.active{color:var(--fg);background:var(--bg-3);border-color:var(--border);font-weight:600}
+  .tab .badge{font-size:10px;background:var(--accent);color:#fff;border-radius:8px;padding:1px 6px;margin-left:6px}
+
+  .stream{flex:1;overflow-y:auto;padding:6px 12px;background:var(--bg)}
+  .srow{display:flex;align-items:flex-start;gap:10px;padding:5px 8px;border-radius:5px;font-family:var(--mono);font-size:12px;border-bottom:1px solid rgba(255,255,255,.03)}
+  .srow:hover{background:var(--bg-2)}
+  .srow .dir{width:34px;text-align:center;font-weight:700;font-size:11px;padding:2px 0;border-radius:4px}
+  .srow .dir.rx{background:rgba(59,130,246,.15);color:var(--rx)}
+  .srow .dir.tx{background:rgba(34,197,94,.15);color:var(--tx)}
+  .srow .ts{color:var(--fg-3);font-size:11px;min-width:66px}
+  .srow .data{flex:1;word-break:break-all;color:var(--fg)}
+  .srow .data .hl{color:var(--accent-2)}
+  .srow .data .hltx{color:var(--tx)}
+  .srow .tag{font-size:10px;color:var(--fg-3);background:var(--bg-3);border-radius:4px;padding:1px 6px;border:1px solid var(--border)}
+
+  /* 下层：发送面板 */
+  .send-panel{
+    flex:0 0 210px;border-top:1px solid var(--border);background:var(--bg-2);
+    display:flex;flex-direction:column;min-height:0;
+  }
+  .sp-head{padding:8px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+  .sp-head .t{font-weight:600;font-size:13px}
+  .sp-head .seg{display:flex;background:var(--bg-3);border-radius:6px;padding:2px;gap:2px;margin-left:auto}
+  .sp-head .seg button{background:transparent;border:none;color:var(--fg-2);padding:4px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-family:var(--sans)}
+  .sp-head .seg button.on{background:var(--accent);color:#fff}
+  .send-queue{flex:1;overflow-y:auto;padding:6px 10px}
+  .sq{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--border);margin-bottom:5px}
+  .sq .chip{width:20px;text-align:center;color:var(--fg-3);font-size:11px}
+  .sq .body{flex:1;font-family:var(--mono);font-size:12px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sq .meta{color:var(--fg-3);font-size:10px;display:flex;flex-direction:column;text-align:right;line-height:1.3}
+  .sq .ops{display:flex;gap:3px}
+  .sq .ops button{border:none;background:transparent;color:var(--fg-3);cursor:pointer;font-size:11px;padding:3px;border-radius:4px}
+  .sq .ops button:hover{background:var(--bg-3);color:var(--fg)}
+  .sq.enabled .chip{color:var(--ok)}
+  .sq.disabled{opacity:.45}
+  .sp-foot{padding:8px 10px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+  .sp-foot input{flex:1;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-family:var(--mono);font-size:12px;padding:6px 9px;outline:none}
+  .sp-foot .add{background:var(--accent);border:none;border-radius:6px;color:#fff;padding:6px 14px;cursor:pointer;font-size:12px;font-family:var(--sans)}
+  .sp-foot .send{background:var(--ok);border:none;border-radius:6px;color:#06120a;padding:6px 16px;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--sans)}
+
+  /* 右侧扩展边栏 */
+  .xsidebar{width:170px;flex:0 0 170px;background:var(--bg-2);border-left:1px solid var(--border);overflow-y:auto;min-height:0}
+  .xsidebar.collapsed{width:46px;flex-basis:46px}
+  .xs-head{padding:12px 12px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--fg-3);display:flex;align-items:center;justify-content:space-between}
+  .xt-tool{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:6px;cursor:pointer;color:var(--fg-2);font-size:12px;margin-bottom:2px}
+  .xt-tool:hover{background:var(--bg-3);color:var(--fg)}
+  .xt-tool.on{color:var(--fg)}
+  .xt-tool .ic{width:18px;text-align:center}
+  .xs-sec{padding:10px 12px 4px;font-size:10px;color:var(--fg-3);text-transform:uppercase;letter-spacing:.6px}
+
+  /* 底部状态栏 */
+  .statusbar{height:28px;flex:0 0 28px;display:flex;align-items:center;gap:16px;padding:0 14px;background:var(--bg-2);border-top:1px solid var(--border);font-size:11px;color:var(--fg-3)}
+  .statusbar .n{color:var(--fg-2);font-family:var(--mono)}
+
+  .scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;place-items:center}
+  .scrim.show{display:grid}
+  .modal{background:var(--bg-3);border:1px solid var(--border-2);border-radius:12px;padding:22px;width:420px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal h3{font-size:15px;margin-bottom:6px}
+  .modal p{color:var(--fg-2);font-size:12.5px;margin-bottom:16px}
+  .modal .row{display:flex;gap:10px;justify-content:flex-end}
+  .modal button{padding:7px 16px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-family:var(--sans)}
+  .modal .ghost{background:var(--bg);color:var(--fg-2);border:1px solid var(--border)}
+  .modal .acc{background:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="brand"><div class="logo">HC</div><span>HCOM</span></div>
+    <div class="tb-div"></div>
+    <button class="tb-btn" onclick="toast('打开日志文件')">📂 打开</button>
+    <button class="tb-btn" onclick="toast('保存日志')">💾 保存</button>
+    <button class="tb-btn" onclick="toast('导入帧配置')">⬆️ 导入帧配置</button>
+    <button class="tb-btn" onclick="toast('导出帧配置')">⬇️ 导出</button>
+    <button class="tb-btn" onclick="toast('已清空日志')">🧹 清除日志</button>
+    <div class="spacer"></div>
+    <div class="tb-status">
+      <div class="pill on"><i></i> COM3 · 115200 · 8-N-1</div>
+      <div class="pill"><i></i> 已连接</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Left sidebar: protocols -->
+    <div class="sidebar" id="leftSb">
+      <div class="sb-head">协议类型 <span class="sb-collapse" onclick="toggleL()">⟨⟨</span></div>
+      <div class="proto-list">
+        <div class="proto active" onclick="selProto(this)"><span class="ic">🔌</span><span>UART</span></div>
+        <div class="proto" onclick="selProto(this)"><span class="ic">🚌</span><span>CAN</span></div>
+        <div class="proto" onclick="selProto(this)"><span class="ic">⚡</span><span>CAN-FD</span></div>
+        <div class="proto" onclick="selProto(this)"><span class="ic">🔗</span><span>I2C</span></div>
+        <div class="proto" onclick="selProto(this)"><span class="ic">🌐</span><span>TCP</span></div>
+        <div class="proto" onclick="selProto(this)"><span class="ic">📡</span><span>SPI</span></div>
+        <div class="proto" onclick="selProto(this)"><span class="ic">🔄</span><span>虚拟串口</span></div>
+      </div>
+      <div class="sb-foot">
+        <div class="set" onclick="toast('设置')"><span class="ic">⚙️</span><span>设置</span></div>
+      </div>
+    </div>
+
+    <!-- Center -->
+    <div class="center">
+      <!-- upper: config -->
+      <div class="config-bar">
+        <div class="cfg"><span class="lbl">串口</span>
+          <select><option>COM3 (USB-Serial)</option><option>COM4</option><option>COM5</option></select>
+        </div>
+        <div class="cfg"><span class="lbl">波特率</span>
+          <select><option>115200</option><option>921600</option><option>57600</option><option>38400</option><option>9600</option></select>
+        </div>
+        <div class="cfg"><span class="lbl">数据位</span>
+          <select><option>8</option><option>7</option><option>6</option><option>5</option></select>
+        </div>
+        <div class="cfg"><span class="lbl">停止位</span>
+          <select><option>1</option><option>2</option></select>
+        </div>
+        <div class="cfg"><span class="lbl">校验</span>
+          <select><option>无(None)</option><option>奇(Odd)</option><option>偶(Even)</option></select>
+        </div>
+        <div class="cfg"><span class="lbl">流控</span>
+          <select><option>无</option><option>RTS/CTS</option></select>
+        </div>
+        <div class="conn-sep"></div>
+        <div class="conn-status connected" id="conn"><i></i><span id="connTxt">已连接</span></div>
+        <button class="conn-btn" id="connBtn" onclick="toggleConn()">关闭端口</button>
+      </div>
+
+      <!-- middle: stream -->
+      <div class="stream-wrap">
+        <div class="tabs">
+          <div class="tab active" onclick="selTab(this)">HEX 原始 <span class="badge" id="hexCnt">128</span></div>
+          <div class="tab" onclick="selTab(this)">字段解析</div>
+          <div class="tab" onclick="selTab(this)">时间轴</div>
+          <div class="tab" onclick="selTab(this)">统计</div>
+        </div>
+        <div class="stream" id="stream">
+          <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:41.112</span><span class="data"><span class="hl">AA 55</span> 01 00 0B 1C 02 34 56 78 9A <span class="hl">BC 1C</span></span><span class="tag">帧 #120</span></div>
+          <div class="srow"><span class="dir tx">TX</span><span class="ts">12:03:41.376</span><span class="data"><span class="hltx">AA 55</span> A0 00 00 00 00 00 00 00 <span class="hltx">00 00</span></span><span class="tag">指令·心跳</span></div>
+          <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:41.378</span><span class="data"><span class="hl">AA 55</span> 01 01 04 00 41 42 <span class="hl">20 1A</span></span><span class="tag">帧 #121</span></div>
+          <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:41.380</span><span class="data"><span class="hl">AA 55</span> 01 02 08 00 FF 00 01 02 03 04 <span class="hl">9C 2F</span></span><span class="tag">帧 #122</span></div>
+          <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:41.381</span><span class="data"><span class="hl">AA 55</span> 01 03 02 00 7F <span class="hl">D2 09</span></span><span class="tag">帧 #123</span></div>
+          <div class="srow"><span class="dir tx">TX</span><span class="ts">12:03:42.210</span><span class="data"><span class="hltx">AA 55</span> A0 00 00 00 00 00 00 00 <span class="hltx">00 00</span></span><span class="tag">指令·心跳</span></div>
+          <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:42.212</span><span class="data"><span class="hl">AA 55</span> 01 03 02 00 7F <span class="hl">D2 09</span></span><span class="tag">帧 #124</span></div>
+          <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:42.215</span><span class="data"><span class="hl">AA 55</span> 01 04 06 00 12 34 56 78 <span class="hl">E4 77</span></span><span class="tag">帧 #125</span></div>
+        </div>
+      </div>
+
+      <!-- lower: send -->
+      <div class="send-panel">
+        <div class="sp-head"><span class="t">发送面板</span>
+          <div class="seg">
+            <button class="on" onclick="segMode(this)">顺序</button>
+            <button onclick="segMode(this)">循环</button>
+            <button onclick="segMode(this)">触发</button>
+          </div>
+        </div>
+        <div class="send-queue" id="queue">
+          <div class="sq enabled"><span class="chip">◉</span><span class="body">AA 55 A0 00 00 00 00 00 00 00 00 00</span><span class="meta">×200ms<br>指令·心跳</span><span class="ops"><button>↑</button><button>↓</button><button onclick="delRow(this)">✕</button></span></div>
+          <div class="sq enabled"><span class="chip">◉</span><span class="body">AA 55 01 01 04 00 41 42 20 1A</span><span class="meta">×0ms<br>查询状态</span><span class="ops"><button>↑</button><button>↓</button><button onclick="delRow(this)">✕</button></span></div>
+          <div class="sq disabled"><span class="chip">○</span><span class="body">AA 55 02 FF 00 01 02 03 04 05 06</span><span class="meta">禁用<br>批量写</span><span class="ops"><button>↑</button><button>↓</button><button onclick="delRow(this)">✕</button></span></div>
+        </div>
+        <div class="sp-foot">
+          <input placeholder="AA 55 ... 输入 HEX 或文本">
+          <button class="add" onclick="toast('已加入队列')">+ 队列</button>
+          <button class="send" onclick="doSend()">发送</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right sidebar: extensions -->
+    <div class="xsidebar" id="rightSb">
+      <div class="xs-head">扩展面板 <span class="sb-collapse" onclick="toggleR()">⟩⟩</span></div>
+      <div class="xs-sec">解析器</div>
+      <div class="xt-tool" onclick="xtSel(this)"><span class="ic">🧮</span><span>CRC 计算器</span></div>
+      <div class="xt-tool" onclick="xtSel(this)"><span class="ic">👁️</span><span>帧监听</span></div>
+      <div class="xt-tool" onclick="xtSel(this)"><span class="ic">📈</span><span>时序分析</span></div>
+      <div class="xs-sec">工具</div>
+      <div class="xt-tool" onclick="xtSel(this)"><span class="ic">🪛</span><span>信号发生器</span></div>
+      <div class="xt-tool" onclick="xtSel(this)"><span class="ic">🔎</span><span>抓包导入</span></div>
+      <div class="xt-tool" onclick="xtSel(this)"><span class="ic">🧩</span><span>插件管理</span></div>
+    </div>
+  </div>
+
+  <!-- statusbar -->
+  <div class="statusbar">
+    <span>RX: <span class="n" id="rxCount">50</span> B</span>
+    <span>TX: <span class="n" id="txCount">6</span> B</span>
+    <span>速率: <span class="n">12.4 KB/s</span></span>
+    <span style="margin-left:auto">帧: <span class="n">125</span> · 校验通过率 <span class="n">100%</span></span>
+  </div>
+</div>
+
+<!-- modal -->
+<div class="scrim" id="scrim" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>模拟操作</h3><p id="modalTxt"></p>
+    <div class="row"><button class="ghost" onclick="closeModal()">取消</button><button class="acc" onclick="closeModal()">确定</button></div>
+  </div>
+</div>
+
+<script>
+function toast(m){const s=document.createElement('div');s.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:#171d26;border:1px solid #333c4a;color:#e6edf3;padding:9px 18px;border-radius:8px;font-size:12.5px;z-index:99;box-shadow:0 8px 30px rgba(0,0,0,.4)';s.textContent=m;document.body.appendChild(s);setTimeout(()=>s.remove(),1400)}
+function delRow(b){b.closest('.sq').remove()}
+function selProto(el){document.querySelectorAll('.proto').forEach(p=>p.classList.remove('active'));el.classList.add('active')}
+function selTab(el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active')}
+function segMode(el){document.querySelectorAll('.sp-head .seg button').forEach(b=>b.classList.remove('on'));el.classList.add('on')}
+function xtSel(el){document.querySelectorAll('.xt-tool').forEach(x=>x.classList.remove('on'));el.classList.add('on')}
+function toggleL(){document.getElementById('leftSb').classList.toggle('collapsed')}
+function toggleR(){document.getElementById('rightSb').classList.toggle('collapsed')}
+let connected=true;
+function toggleConn(){
+  const b=document.getElementById('connBtn'),st=document.getElementById('conn'),t=document.getElementById('connTxt');
+  connected=!connected;
+  if(!connected){b.textContent='打开端口';st.className='conn-status';st.style.color='';t.textContent='已断开';}
+  else{b.textContent='关闭端口';st.className='conn-status connected';t.textContent='已连接';}
+}
+function doSend(){
+  const c=document.getElementById('rxCount');c.textContent=String(+c.textContent+12);
+  const st=document.getElementById('stream');
+  const row=document.createElement('div');row.className='srow';
+  row.innerHTML='<span class="dir tx">TX</span><span class="ts">'+new Date().toTimeString().slice(0,8)+'</span><span class="data"><span class="hltx">AA 55</span> A0 00 00 00 00 00 00 00 <span class="hltx">00 00</span></span><span class="tag">指令·发送</span>';
+  st.insertBefore(row,st.firstChild);
+}
+function openModal(t){document.getElementById('modalTxt').textContent=t;document.getElementById('scrim').classList.add('show')}
+function closeModal(){document.getElementById('scrim').classList.remove('show')}
+// 定时追加 RX 模拟数据流
+setInterval(()=>{
+  const st=document.getElementById('stream');
+  const row=document.createElement('div');row.className='srow';
+  const cols=['AA 55 01 03 02 00 7F D2 09','AA 55 01 02 08 00 12 34 56 78 9A BC','AA 55 01 01 04 00 41 42 20 1A'];
+  row.innerHTML='<span class="dir rx">RX</span><span class="ts">'+new Date().toTimeString().slice(0,8)+'</span><span class="data"><span class="hl">AA 55</span> '+cols[Math.floor(Math.random()*cols.length)].slice(6)+'</span><span class="tag">帧 #'+(125+Math.floor(Math.random()*900))+'</span>';
+  st.insertBefore(row,st.firstChild);
+  const c=document.getElementById('rxCount');c.textContent=String(+c.textContent+8);
+  const h=document.getElementById('hexCnt');h.textContent=String(+h.textContent+3);
+  if(st.children.length>40)st.removeChild(st.lastChild);
+},1600);
+</script>
+</body>
+</html>

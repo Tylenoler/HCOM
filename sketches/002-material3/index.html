@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HCOM 调试助手 · Material 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
+<style>
+/* ================= Material 3 tokens (dark = default) ================= */
+:root,[data-theme="dark"]{
+  --primary:#a8c7fa; --on-primary:#0a305f;
+  --primary-container:#284777; --on-primary-container:#d6e3ff;
+  --secondary-container:#3b4758; --on-secondary-container:#d7e3f8;
+  --surface:#101418; --surface-dim:#101418;
+  --sc-lowest:#0b0f13; --sc-low:#181c20; --sc:#1c2024; --sc-high:#262a2f; --sc-highest:#31353a;
+  --on-surface:#e2e2e9; --on-surface-variant:#c4c6cf;
+  --outline:#8e9099; --outline-variant:#44474e;
+  --error:#ffb4ab; --error-container:#93000a; --on-error-container:#ffdad6;
+  --ok:#7bd88f; --ok-container:#0f3d1f;
+  --rx:#a8c7fa; --tx:#7bd88f;
+  --scrim:rgba(0,0,0,.5);
+}
+[data-theme="light"]{
+  --primary:#0b57d0; --on-primary:#ffffff;
+  --primary-container:#d3e3fd; --on-primary-container:#041e49;
+  --secondary-container:#dee3eb; --on-secondary-container:#191c20;
+  --surface:#f8fafd; --surface-dim:#eef1f5;
+  --sc-lowest:#ffffff; --sc-low:#f3f6fc; --sc:#edf1f7; --sc-high:#e7ecf2; --sc-highest:#e1e5ec;
+  --on-surface:#1a1c1e; --on-surface-variant:#43474e;
+  --outline:#73777f; --outline-variant:#c3c6cf;
+  --error:#b3261e; --error-container:#f9dedc; --on-error-container:#410e0b;
+  --ok:#146c2e; --ok-container:#c4eed0;
+  --rx:#0b57d0; --tx:#146c2e;
+  --scrim:rgba(0,0,0,.32);
+}
+/* ---------------- base ---------------- */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Roboto',system-ui,sans-serif;background:var(--surface);color:var(--on-surface);
+  font-size:14px;line-height:20px;-webkit-font-smoothing:antialiased;overflow:hidden;
+  transition:background .25s,color .25s;
+}
+.material-symbols-rounded{
+  font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;
+  font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;
+  white-space:nowrap;word-wrap:normal;direction:ltr;font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 20;
+  -webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;user-select:none;
+}
+.material-symbols-rounded.off{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.app{display:flex;flex-direction:column;height:100vh}
+
+/* ---------------- M3 top app bar ---------------- */
+.appbar{
+  height:64px;flex:0 0 64px;display:flex;align-items:center;gap:4px;padding:0 8px 0 16px;
+  background:var(--sc);transition:background .25s;
+}
+.appbar .lead{display:flex;align-items:center;gap:12px;margin-right:20px}
+.appbar .logo{
+  width:36px;height:36px;border-radius:12px;display:grid;place-items:center;
+  background:var(--primary-container);color:var(--on-primary-container);
+}
+.appbar h1{font-size:22px;font-weight:400;letter-spacing:0;white-space:nowrap}
+.iconbtn{
+  width:40px;height:40px;border:none;border-radius:100px;background:transparent;color:var(--on-surface-variant);
+  display:grid;place-items:center;cursor:pointer;transition:background .15s;position:relative;
+}
+.iconbtn:hover{background:color-mix(in srgb,var(--on-surface) 8%,transparent)}
+.iconbtn.filled{background:var(--primary);color:var(--on-primary)}
+.iconbtn.tonal{background:var(--secondary-container);color:var(--on-secondary-container)}
+.iconbtn.tonal:hover{background:color-mix(in srgb,var(--on-secondary-container) 10%,var(--secondary-container))}
+.spacer{flex:1}
+.chip-status{
+  display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:8px;
+  border:1px solid var(--outline-variant);font-size:12px;color:var(--on-surface-variant);font-family:'Roboto Mono',monospace;
+}
+.chip-status .material-symbols-rounded{font-size:16px;color:var(--ok)}
+
+/* ---------------- shell: rail | workspace | rail ---------------- */
+.shell{flex:1;display:flex;min-height:0}
+.rail{
+  width:88px;flex:0 0 88px;background:var(--sc-low);display:flex;flex-direction:column;align-items:center;
+  padding:12px 0;gap:4px;transition:flex-basis .22s,width .22s,background .25s;overflow:hidden;
+}
+.rail.l .r-label{border-bottom:none}
+.rail-dest{
+  width:80px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:100px;
+  cursor:pointer;color:var(--on-surface-variant);transition:background .15s,color .15s;position:relative;
+}
+.rail-dest .pill{
+  width:56px;height:32px;border-radius:100px;display:grid;place-items:center;transition:background .18s;
+}
+.rail-dest:hover{color:var(--on-surface)}
+.rail-dest:hover .pill{background:color-mix(in srgb,var(--on-surface) 8%,transparent)}
+.rail-dest.active{color:var(--on-surface)}
+.rail-dest.active .pill{background:var(--secondary-container);color:var(--on-secondary-container)}
+.rail-dest .txt{font-size:11px;font-weight:500;letter-spacing:.3px;white-space:nowrap}
+.rail-sep{width:56px;height:1px;background:var(--outline-variant);margin:8px 0}
+
+/* ---------------- workspace ---------------- */
+.workspace{flex:1;display:flex;flex-direction:column;min-width:0;padding:16px 16px 0;gap:14px}
+
+/* --- config: M3 outlined fields --- */
+.config{
+  flex:0 0 auto;background:var(--sc-low);border-radius:16px;padding:14px 16px;
+  display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;transition:background .25s;
+}
+.field{position:relative;min-width:96px;display:flex;flex-direction:column}
+.field .lbl{
+  position:absolute;top:-8px;left:10px;padding:0 5px;font-size:11px;color:var(--on-surface-variant);
+  background:var(--sc-low);letter-spacing:.4px;transition:background .25s;
+}
+.field select,.field input{
+  appearance:none;background:transparent;border:1px solid var(--outline);border-radius:4px;
+  color:var(--on-surface);font-size:13px;font-family:'Roboto Mono',monospace;
+  padding:10px 30px 10px 12px;cursor:pointer;outline:none;width:100%;transition:border-color .15s;
+}
+.field select:focus,.field input:focus{border-color:var(--primary);border-width:2px;padding:9px 29px 9px 11px}
+.field .arrow{position:absolute;right:8px;bottom:8px;color:var(--on-surface-variant);pointer-events:none;font-size:18px}
+.divider-v{width:1px;height:40px;background:var(--outline-variant);margin:0 2px}
+
+/* --- buttons (M3 filled) --- */
+.btn{
+  height:40px;padding:0 24px;border:none;border-radius:100px;font-family:Roboto;font-size:14px;font-weight:500;
+  letter-spacing:.1px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:box-shadow .15s,background .15s;
+}
+.btn.filled{background:var(--primary);color:var(--on-primary)}
+.btn.filled:hover{box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.btn.tonal{background:var(--secondary-container);color:var(--on-secondary-container)}
+.btn.outlined{background:transparent;border:1px solid var(--outline);color:var(--primary)}
+.btn.error{background:var(--error);color:#601410}
+.btn .material-symbols-rounded{font-size:18px}
+
+/* --- M3 tabs --- */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--outline-variant);background:transparent;flex:0 0 auto}
+.tab{
+  flex:0 0 auto;padding:12px 20px 14px;font-size:14px;font-weight:500;letter-spacing:.1px;color:var(--on-surface-variant);
+  cursor:pointer;position:relative;background:transparent;border:none;font-family:Roboto;transition:color .15s;
+}
+.tab:hover{color:var(--on-surface)}
+.tab.active{color:var(--primary)}
+.tab.active::after{
+  content:'';position:absolute;left:12px;right:12px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--primary);
+}
+.tab .badge{margin-left:8px;background:var(--primary-container);color:var(--on-primary-container);border-radius:8px;padding:1px 7px;font-size:11px;font-family:'Roboto Mono',monospace}
+
+/* --- stream list --- */
+.stream{flex:1;min-height:140px;overflow-y:auto;background:var(--sc-lowest);border-radius:16px;padding:8px;transition:background .25s}
+.srow{
+  display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:12px;font-family:'Roboto Mono',monospace;font-size:12.5px;
+  transition:background .12s;
+}
+.srow:hover{background:var(--sc)}
+.dir{
+  flex:0 0 42px;height:22px;border-radius:100px;display:grid;place-items:center;font-size:11px;font-weight:700;font-family:Roboto;
+}
+.dir.rx{background:color-mix(in srgb,var(--rx) 22%,transparent);color:var(--rx)}
+.dir.tx{background:color-mix(in srgb,var(--tx) 22%,transparent);color:var(--tx)}
+.ts{flex:0 0 92px;color:var(--on-surface-variant);font-size:11.5px}
+.data{flex:1;word-break:break-all;color:var(--on-surface)}
+.data .hl{color:var(--rx);font-weight:500}
+.data .hltx{color:var(--tx);font-weight:500}
+.tag{flex:0 0 auto;font-size:11px;font-family:Roboto;color:var(--on-surface-variant);background:var(--sc-high);border-radius:8px;padding:3px 10px}
+
+/* --- composer --- */
+.composer{flex:0 0 auto;background:var(--sc-low);border-radius:16px 16px 0 0;padding:10px 16px 12px;display:flex;flex-direction:column;gap:8px;transition:background .25s}
+.comp-head{display:flex;align-items:center;gap:12px}
+.comp-head .t{font-size:16px;font-weight:500;letter-spacing:.15px}
+/* M3 segmented button */
+.seg{display:inline-flex;border:1px solid var(--outline);border-radius:100px;overflow:hidden;margin-left:auto}
+.seg button{
+  border:none;background:transparent;padding:7px 18px;font-family:Roboto;font-size:13px;font-weight:500;
+  color:var(--on-surface);cursor:pointer;border-right:1px solid var(--outline);transition:background .15s;display:flex;align-items:center;gap:6px;
+}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--secondary-container);color:var(--on-secondary-container)}
+.seg button .material-symbols-rounded{font-size:16px}
+.qrow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;background:var(--sc-lowest);border:1px solid var(--outline-variant);transition:.15s}
+.qrow.disabled{opacity:.45}
+.qrow .qbody{flex:1;font-family:'Roboto Mono',monospace;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qrow .qmeta{font-size:11px;font-family:Roboto;color:var(--on-surface-variant);text-align:right;line-height:1.35}
+.qrow .qops{display:flex;gap:2px}
+.qrow .qops .iconbtn{width:32px;height:32px}
+.qrow .qops .iconbtn .material-symbols-rounded{font-size:18px}
+#queue{max-height:100px;overflow-y:auto;padding-right:2px}
+.composer .inputrow{display:flex;gap:10px;align-items:center}
+.composer input[type=text]{
+  flex:1;height:44px;border:1px solid var(--outline);border-radius:4px;background:transparent;color:var(--on-surface);
+  font-family:'Roboto Mono',monospace;font-size:13px;padding:0 14px;outline:none;
+}
+.composer input[type=text]:focus{border-color:var(--primary);border-width:2px}
+
+/* ---------------- status bar ---------------- */
+.statusbar{
+  height:30px;flex:0 0 30px;display:flex;align-items:center;gap:20px;padding:0 20px;
+  font-size:11.5px;color:var(--on-surface-variant);background:var(--sc-low);transition:background .25s;
+}
+.statusbar b{font-family:'Roboto Mono',monospace;color:var(--on-surface);font-weight:500}
+
+/* snackbar */
+.snack{
+  position:fixed;left:50%;bottom:44px;transform:translate(-50%,20px);opacity:0;
+  background:var(--sc-highest);color:var(--on-surface);padding:14px 18px;border-radius:8px;font-size:14px;
+  box-shadow:0 9px 20px rgba(0,0,0,.3);transition:.25s;z-index:99;pointer-events:none;
+}
+.snack.show{opacity:1;transform:translate(-50%,0)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--outline-variant);border-radius:100px}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ===== Top App Bar ===== -->
+  <header class="appbar">
+    <div class="lead">
+      <div class="logo"><span class="material-symbols-rounded">terminal</span></div>
+      <h1>HCOM 调试助手</h1>
+    </div>
+    <button class="iconbtn tonal" title="打开日志"><span class="material-symbols-rounded">folder_open</span></button>
+    <button class="iconbtn tonal" title="保存日志"><span class="material-symbols-rounded">save</span></button>
+    <button class="iconbtn tonal" title="导入帧配置"><span class="material-symbols-rounded">upload_file</span></button>
+    <button class="iconbtn tonal" title="导出帧配置"><span class="material-symbols-rounded">download</span></button>
+    <button class="iconbtn tonal" title="清除日志"><span class="material-symbols-rounded">delete_sweep</span></button>
+    <div class="spacer"></div>
+    <span class="chip-status"><span class="material-symbols-rounded">link</span>COM3 · 115200 · 8-N-1</span>
+    <button class="iconbtn" title="主题切换" onclick="toggleTheme()"><span class="material-symbols-rounded off" id="themeIcon">light_mode</span></button>
+    <button class="iconbtn" title="设置"><span class="material-symbols-rounded off">settings</span></button>
+  </header>
+
+  <div class="shell">
+    <!-- ===== Left Navigation Rail : protocols ===== -->
+    <nav class="rail l" id="leftRail">
+      <div class="rail-dest active" onclick="pickDest(this,'proto')">
+        <div class="pill"><span class="material-symbols-rounded">usb</span></div><span class="txt">UART</span>
+      </div>
+      <div class="rail-dest" onclick="pickDest(this,'proto')">
+        <div class="pill"><span class="material-symbols-rounded">route</span></div><span class="txt">CAN</span>
+      </div>
+      <div class="rail-dest" onclick="pickDest(this,'proto')">
+        <div class="pill"><span class="material-symbols-rounded">bolt</span></div><span class="txt">CAN-FD</span>
+      </div>
+      <div class="rail-dest" onclick="pickDest(this,'proto')">
+        <div class="pill"><span class="material-symbols-rounded">hub</span></div><span class="txt">I2C</span>
+      </div>
+      <div class="rail-dest" onclick="pickDest(this,'proto')">
+        <div class="pill"><span class="material-symbols-rounded">lan</span></div><span class="txt">TCP</span>
+      </div>
+      <div class="rail-dest" onclick="pickDest(this,'proto')">
+        <div class="pill"><span class="material-symbols-rounded">memory</span></div><span class="txt">虚拟串口</span>
+      </div>
+      <div class="rail-sep"></div>
+      <div class="rail-dest" onclick="pickDest(this,'proto')">
+        <div class="pill"><span class="material-symbols-rounded off">settings</span></div><span class="txt">设置</span>
+      </div>
+    </nav>
+
+    <!-- ===== Workspace ===== -->
+    <section class="workspace">
+      <!-- upper : port config -->
+      <div class="config">
+        <div class="field"><span class="lbl">串口</span>
+          <select><option>COM3 (USB-Serial)</option><option>COM4</option><option>COM5</option></select>
+          <span class="material-symbols-rounded arrow off">arrow_drop_down</span>
+        </div>
+        <div class="field"><span class="lbl">波特率</span>
+          <select><option>115200</option><option>921600</option><option>57600</option><option>38400</option><option>9600</option></select>
+          <span class="material-symbols-rounded arrow off">arrow_drop_down</span>
+        </div>
+        <div class="field"><span class="lbl">数据位</span>
+          <select><option>8</option><option>7</option><option>6</option><option>5</option></select>
+          <span class="material-symbols-rounded arrow off">arrow_drop_down</span>
+        </div>
+        <div class="field"><span class="lbl">停止位</span>
+          <select><option>1</option><option>2</option></select>
+          <span class="material-symbols-rounded arrow off">arrow_drop_down</span>
+        </div>
+        <div class="field"><span class="lbl">校验</span>
+          <select><option>无 None</option><option>奇 Odd</option><option>偶 Even</option></select>
+          <span class="material-symbols-rounded arrow off">arrow_drop_down</span>
+        </div>
+        <div class="field"><span class="lbl">流控</span>
+          <select><option>无</option><option>RTS/CTS</option><option>XON/XOFF</option></select>
+          <span class="material-symbols-rounded arrow off">arrow_drop_down</span>
+        </div>
+        <div class="divider-v"></div>
+        <button class="btn error" id="connBtn" onclick="toggleConn()"><span class="material-symbols-rounded">link_off</span><span id="connTxt">关闭端口</span></button>
+      </div>
+
+      <!-- middle : data stream -->
+      <div class="tabs">
+        <button class="tab active" onclick="pickTab(this)">HEX 原始<span class="badge" id="hexCnt">125</span></button>
+        <button class="tab" onclick="pickTab(this)">字段解析</button>
+        <button class="tab" onclick="pickTab(this)">时间轴</button>
+        <button class="tab" onclick="pickTab(this)">统计</button>
+      </div>
+      <div class="stream" id="stream">
+        <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:41.112</span><span class="data"><span class="hl">AA 55</span> 01 00 0B 1C 02 34 56 78 9A BC 1C</span><span class="tag">帧 #120</span></div>
+        <div class="srow"><span class="dir tx">TX</span><span class="ts">12:03:41.376</span><span class="data"><span class="hltx">AA 55</span> A0 00 00 00 00 00 00 00 00 00</span><span class="tag">心跳</span></div>
+        <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:41.378</span><span class="data"><span class="hl">AA 55</span> 01 01 04 00 41 42 20 1A</span><span class="tag">帧 #121</span></div>
+        <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:41.380</span><span class="data"><span class="hl">AA 55</span> 01 02 08 00 FF 00 01 02 03 04 9C 2F</span><span class="tag">帧 #122</span></div>
+        <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:41.381</span><span class="data"><span class="hl">AA 55</span> 01 03 02 00 7F D2 09</span><span class="tag">帧 #123</span></div>
+        <div class="srow"><span class="dir tx">TX</span><span class="ts">12:03:42.210</span><span class="data"><span class="hltx">AA 55</span> A0 00 00 00 00 00 00 00 00 00</span><span class="tag">心跳</span></div>
+        <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:42.212</span><span class="data"><span class="hl">AA 55</span> 01 03 02 00 7F D2 09</span><span class="tag">帧 #124</span></div>
+        <div class="srow"><span class="dir rx">RX</span><span class="ts">12:03:42.215</span><span class="data"><span class="hl">AA 55</span> 01 04 06 00 12 34 56 78 E4 77</span><span class="tag">帧 #125</span></div>
+      </div>
+
+      <!-- lower : composer -->
+      <div class="composer">
+        <div class="comp-head">
+          <span class="t">发送面板</span>
+          <div class="seg">
+            <button class="on" onclick="pickSeg(this)"><span class="material-symbols-rounded">playlist_play</span>顺序</button>
+            <button onclick="pickSeg(this)"><span class="material-symbols-rounded">repeat</span>循环</button>
+            <button onclick="pickSeg(this)"><span class="material-symbols-rounded">bolt</span>触发</button>
+          </div>
+        </div>
+        <div id="queue">
+          <div class="qrow" style="margin-bottom:6px"><span class="qbody">AA 55 A0 00 00 00 00 00 00 00 00 00</span><span class="qmeta">间隔 200ms<br>心跳</span><span class="qops"><button class="iconbtn"><span class="material-symbols-rounded off">arrow_upward</span></button><button class="iconbtn"><span class="material-symbols-rounded off">arrow_downward</span></button><button class="iconbtn" onclick="delRow(this)"><span class="material-symbols-rounded off">close</span></button></span></div>
+          <div class="qrow" style="margin-bottom:6px"><span class="qbody">AA 55 01 01 04 00 41 42 20 1A</span><span class="qmeta">立即<br>查询状态</span><span class="qops"><button class="iconbtn"><span class="material-symbols-rounded off">arrow_upward</span></button><button class="iconbtn"><span class="material-symbols-rounded off">arrow_downward</span></button><button class="iconbtn" onclick="delRow(this)"><span class="material-symbols-rounded off">close</span></button></span></div>
+          <div class="qrow disabled"><span class="qbody">AA 55 02 FF 00 01 02 03 04 05 06</span><span class="qmeta">已禁用<br>批量写</span><span class="qops"><button class="iconbtn"><span class="material-symbols-rounded off">arrow_upward</span></button><button class="iconbtn"><span class="material-symbols-rounded off">arrow_downward</span></button><button class="iconbtn" onclick="delRow(this)"><span class="material-symbols-rounded off">close</span></button></span></div>
+        </div>
+        <div class="inputrow">
+          <input type="text" placeholder="输入 HEX 或文本命令，例如 AA 55 01 01 04 00 41 42 20 1A">
+          <button class="btn tonal" onclick="snack('已加入队列')"><span class="material-symbols-rounded off">add</span>队列</button>
+          <button class="btn filled" onclick="doSend()"><span class="material-symbols-rounded">send</span>发送</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Right Navigation Rail : extensions ===== -->
+    <nav class="rail" id="rightRail">
+      <div class="rail-dest" onclick="pickDest(this,'ext')">
+        <div class="pill"><span class="material-symbols-rounded">calculate</span></div><span class="txt">CRC</span>
+      </div>
+      <div class="rail-dest" onclick="pickDest(this,'ext')">
+        <div class="pill"><span class="material-symbols-rounded">visibility</span></div><span class="txt">帧监听</span>
+      </div>
+      <div class="rail-dest" onclick="pickDest(this,'ext')">
+        <div class="pill"><span class="material-symbols-rounded">show_chart</span></div><span class="txt">时序</span>
+      </div>
+      <div class="rail-sep"></div>
+      <div class="rail-dest" onclick="pickDest(this,'ext')">
+        <div class="pill"><span class="material-symbols-rounded">science</span></div><span class="txt">信号</span>
+      </div>
+      <div class="rail-dest" onclick="pickDest(this,'ext')">
+        <div class="pill"><span class="material-symbols-rounded">link</span></div><span class="txt">抓包</span>
+      </div>
+      <div class="rail-dest" onclick="pickDest(this,'ext')">
+        <div class="pill"><span class="material-symbols-rounded">extension</span></div><span class="txt">插件</span>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ===== status bar ===== -->
+  <div class="statusbar">
+    <span>RX <b id="rxCount">50</b> B</span>
+    <span>TX <b id="txCount">6</b> B</span>
+    <span>速率 <b>12.4 KB/s</b></span>
+    <span style="margin-left:auto">帧 <b>125</b></span>
+    <span>校验通过率 <b>100%</b></span>
+  </div>
+</div>
+<div class="snack" id="snack"></div>
+
+<script>
+function pickDest(el,group){
+  const rail = group==='proto' ? document.getElementById('leftRail') : document.getElementById('rightRail');
+  rail.querySelectorAll('.rail-dest').forEach(d=>d.classList.remove('active'));
+  el.classList.add('active');
+}
+function pickTab(el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active')}
+function pickSeg(el){el.closest('.seg').querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')}
+function delRow(b){b.closest('.qrow').remove()}
+let connected=true;
+function toggleConn(){
+  const b=document.getElementById('connBtn'),t=document.getElementById('connTxt'),i=b.querySelector('.material-symbols-rounded');
+  connected=!connected;
+  if(connected){b.className='btn error';t.textContent='关闭端口';i.textContent='link_off';snack('端口已打开');}
+  else{b.className='btn filled';t.textContent='打开端口';i.textContent='link';snack('端口已关闭');}
+}
+function toggleTheme(){
+  const html=document.documentElement,ic=document.getElementById('themeIcon');
+  const dark = html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme', dark?'light':'dark');
+  ic.textContent = dark?'dark_mode':'light_mode';
+}
+let snackTimer;
+function snack(m){
+  const s=document.getElementById('snack');s.textContent=m;s.classList.add('show');
+  clearTimeout(snackTimer);snackTimer=setTimeout(()=>s.classList.remove('show'),1800);
+}
+function doSend(){
+  const st=document.getElementById('stream');
+  const row=document.createElement('div');row.className='srow';
+  row.innerHTML='<span class="dir tx">TX</span><span class="ts">'+new Date().toTimeString().slice(0,8)+'</span><span class="data"><span class="hltx">AA 55</span> A0 00 00 00 00 00 00 00 00 00</span><span class="tag">发送</span>';
+  st.insertBefore(row,st.firstChild);
+  const c=document.getElementById('txCount');c.textContent=String(+c.textContent+12);
+  snack('已发送 12 字节');
+}
+// live RX stream
+setInterval(()=>{
+  const st=document.getElementById('stream');
+  const pools=['AA 55 01 03 02 00 7F D2 09','AA 55 01 02 08 00 12 34 56 78 9A BC','AA 55 01 01 04 00 41 42 20 1A'];
+  const row=document.createElement('div');row.className='srow';
+  const p=pools[Math.floor(Math.random()*pools.length)];
+  row.innerHTML='<span class="dir rx">RX</span><span class="ts">'+new Date().toTimeString().slice(0,8)+'</span><span class="data"><span class="hl">AA 55</span> '+p.slice(6)+'</span><span class="tag">帧 #'+(126+Math.floor(Math.random()*900))+'</span>';
+  st.insertBefore(row,st.firstChild);
+  if(st.children.length>40)st.removeChild(st.lastChild);
+  const c=document.getElementById('rxCount');c.textContent=String(+c.textContent+8);
+},1700);
+</script>
+</body>
+</html>
