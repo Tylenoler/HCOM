@@ -9,7 +9,7 @@ use std::{
         Arc,
     },
     thread::{self, JoinHandle},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use chrono::{SecondsFormat, Utc};
@@ -23,7 +23,7 @@ const READ_BUFFER_BYTES: usize = 1024;
 const MAX_BATCH_BYTES: usize = 4 * 1024;
 const MAX_EVENT_QUEUE: usize = 128;
 const MAX_WRITE_BYTES: usize = 16 * 1024;
-const RX_IDLE_BOUNDARY: Duration = Duration::from_millis(12);
+const RX_IDLE_BOUNDARY: Duration = Duration::from_millis(6);
 
 #[derive(Debug, Deserialize)]
 struct Command {
@@ -52,6 +52,12 @@ struct PortSession {
     port: Box<dyn SerialPort>,
     stop: Arc<AtomicBool>,
     reader: JoinHandle<()>,
+}
+
+struct PeriodicSend {
+    interval: Duration,
+    commands: Vec<Vec<u8>>,
+    next_due: Instant,
 }
 
 /// UART is a byte stream: a single write may be returned by the operating
@@ -229,6 +235,68 @@ fn payload_u64(payload: &Value, key: &str) -> Result<u64, String> {
         .ok_or_else(|| format!("缺少或无效的 {key}。"))
 }
 
+fn payload_hex_commands(payload: &Value) -> Result<Vec<Vec<u8>>, String> {
+    let values = payload
+        .get("commands")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "缺少或无效的 commands。".to_owned())?;
+    if values.is_empty() {
+        return Err("周期发送至少需要一条命令。".to_owned());
+    }
+    values
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .ok_or_else(|| "周期命令必须是 HEX 字符串。".to_owned())
+                .and_then(parse_hex)
+        })
+        .collect()
+}
+
+fn write_serial_data(opened: &mut PortSession, bytes: &[u8]) -> Result<(), String> {
+    opened
+        .port
+        .write_all(bytes)
+        .map_err(|error| format!("串口写入失败：{error}"))?;
+    opened
+        .port
+        .flush()
+        .map_err(|error| format!("串口刷新失败：{error}"))?;
+    emit(
+        "serial_data",
+        json!({"direction": "tx", "timestamp": timestamp(), "bytes": hex(bytes)}),
+    );
+    Ok(())
+}
+
+fn run_periodic_send(periodic: &mut Option<PeriodicSend>, session: &mut Option<PortSession>) {
+    let Some(job) = periodic.as_ref() else {
+        return;
+    };
+    let commands = job.commands.clone();
+    let interval = job.interval;
+
+    for bytes in commands {
+        let Some(opened) = session.as_mut() else {
+            *periodic = None;
+            emit_error("periodic_stopped", "串口已关闭，周期发送已停止。");
+            emit("periodic_state", json!({"active": false}));
+            return;
+        };
+        if let Err(error) = write_serial_data(opened, &bytes) {
+            *periodic = None;
+            emit_error("periodic_write_failed", error);
+            emit("periodic_state", json!({"active": false}));
+            return;
+        }
+    }
+
+    if let Some(job) = periodic.as_mut() {
+        job.next_due = Instant::now() + interval;
+    }
+}
+
 fn spawn_reader(
     mut port: Box<dyn SerialPort>,
     session: u64,
@@ -377,9 +445,14 @@ fn main() {
     emit_state("disconnected", None);
 
     let mut session: Option<PortSession> = None;
+    let mut periodic: Option<PeriodicSend> = None;
     let mut next_session_id = 1_u64;
     loop {
-        match receiver.recv_timeout(Duration::from_millis(100)) {
+        let wait = periodic
+            .as_ref()
+            .map(|job| job.next_due.saturating_duration_since(Instant::now()))
+            .unwrap_or_else(|| Duration::from_millis(100));
+        match receiver.recv_timeout(wait) {
             Ok(CoreEvent::Command(Err(error))) => emit_error("invalid_command", error),
             Ok(CoreEvent::Command(Ok(command))) => match command.command.as_str() {
                 "hello" => {
@@ -417,6 +490,7 @@ fn main() {
                     }
                 }
                 "close_port" => {
+                    periodic = None;
                     if let Some(opened) = session.take() {
                         close_session(opened);
                     }
@@ -429,23 +503,42 @@ fn main() {
                         let opened = session
                             .as_mut()
                             .ok_or_else(|| "当前没有已连接的串口。".to_owned())?;
-                        opened
-                            .port
-                            .write_all(&bytes)
-                            .map_err(|error| format!("串口写入失败：{error}"))?;
-                        opened
-                            .port
-                            .flush()
-                            .map_err(|error| format!("串口刷新失败：{error}"))?;
-                        emit(
-                            "serial_data",
-                            json!({"direction": "tx", "timestamp": timestamp(), "bytes": hex(&bytes)}),
-                        );
-                        Ok::<(), String>(())
+                        write_serial_data(opened, &bytes)
                     })();
                     if let Err(error) = result {
                         emit_error("write_failed", error);
                     }
+                }
+                "start_periodic" => {
+                    let result = (|| {
+                        let interval_ms = payload_u64(&command.payload, "intervalMs")?;
+                        if interval_ms < 10 || interval_ms > 3_600_000 {
+                            return Err("周期必须在 10–3600000 ms 之间。".to_owned());
+                        }
+                        if session.is_none() {
+                            return Err("当前没有已连接的串口。".to_owned());
+                        }
+                        let commands = payload_hex_commands(&command.payload)?;
+                        periodic = Some(PeriodicSend {
+                            interval: Duration::from_millis(interval_ms),
+                            commands,
+                            next_due: Instant::now(),
+                        });
+                        run_periodic_send(&mut periodic, &mut session);
+                        if periodic.is_some() {
+                            emit("periodic_state", json!({"active": true}));
+                        }
+                        Ok::<(), String>(())
+                    })();
+                    if let Err(error) = result {
+                        periodic = None;
+                        emit_error("periodic_start_failed", error);
+                        emit("periodic_state", json!({"active": false}));
+                    }
+                }
+                "stop_periodic" => {
+                    periodic = None;
+                    emit("periodic_state", json!({"active": false}));
                 }
                 _ => emit_error("unsupported", "不支持的 Core 命令。"),
             },
@@ -479,6 +572,7 @@ fn main() {
                     .as_ref()
                     .is_some_and(|opened| opened.id == event_session)
                 {
+                    periodic = None;
                     if let Some(opened) = session.take() {
                         close_session(opened);
                     }
@@ -489,7 +583,13 @@ fn main() {
                 }
             }
             Ok(CoreEvent::InputClosed) | Err(RecvTimeoutError::Disconnected) => break,
-            Err(RecvTimeoutError::Timeout) => continue,
+            Err(RecvTimeoutError::Timeout) => {}
+        }
+        if periodic
+            .as_ref()
+            .is_some_and(|job| Instant::now() >= job.next_due)
+        {
+            run_periodic_send(&mut periodic, &mut session);
         }
     }
     if let Some(opened) = session.take() {
@@ -499,7 +599,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{flow_control, parity, parse_hex};
+    use super::{flow_control, parity, parse_hex, payload_hex_commands};
+    use serde_json::json;
     use serialport::{FlowControl, Parity};
 
     #[test]
@@ -513,6 +614,15 @@ mod tests {
         assert!(parse_hex("A").is_err());
         assert!(parse_hex("GG").is_err());
         assert!(parse_hex(" ").is_err());
+    }
+
+    #[test]
+    fn parses_periodic_command_batches() {
+        assert_eq!(
+            payload_hex_commands(&json!({"commands": ["AA 55", "01"]})).unwrap(),
+            vec![vec![0xAA, 0x55], vec![0x01]],
+        );
+        assert!(payload_hex_commands(&json!({"commands": []})).is_err());
     }
 
     #[test]

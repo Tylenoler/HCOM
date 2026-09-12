@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  bitsdojo_window: ^0.1.6
+  file_selector: ^1.0.3
   shared_preferences: ^2.5.3
 
 dev_dependencies:

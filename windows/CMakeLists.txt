@@ -72,16 +72,25 @@ endif()
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 
-# Phase 1 Rust Core: bootstrap.ps1 builds this before `flutter build windows`.
-# The core is deployed next to hcom.exe so Flutter can launch it without a port
-# listener or a user-specific PATH entry.
+# Build the Rust Core whenever its source has changed, then deploy it beside
+# hcom.exe so a Flutter-only build can never package a stale Core executable.
+set(HCOM_CORE_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/../core/Cargo.toml")
 set(HCOM_CORE_EXECUTABLE "${CMAKE_CURRENT_SOURCE_DIR}/../core/target/release/hcom-core.exe")
-if(EXISTS "${HCOM_CORE_EXECUTABLE}")
-  install(FILES "${HCOM_CORE_EXECUTABLE}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
-    COMPONENT Runtime)
-else()
-  message(WARNING "hcom-core.exe was not found; build core/Cargo.toml before packaging HCOM.")
-endif()
+file(GLOB_RECURSE HCOM_CORE_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/../core/src/*.rs")
+add_custom_command(
+  OUTPUT "${HCOM_CORE_EXECUTABLE}"
+  COMMAND cargo build --release --manifest-path "${HCOM_CORE_MANIFEST}"
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
+  DEPENDS "${HCOM_CORE_MANIFEST}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/../core/Cargo.lock"
+          ${HCOM_CORE_SOURCES}
+  COMMENT "Building HCOM Rust Core"
+  VERBATIM)
+add_custom_target(hcom_core_build ALL DEPENDS "${HCOM_CORE_EXECUTABLE}")
+add_dependencies(${BINARY_NAME} hcom_core_build)
+install(FILES "${HCOM_CORE_EXECUTABLE}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
