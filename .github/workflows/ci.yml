@@ -24,4 +24,4 @@ jobs:
           flutter pub get
           flutter analyze
           flutter test
-          flutter build windows
+          flutter build windows --no-tree-shake-icons

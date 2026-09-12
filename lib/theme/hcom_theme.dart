@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 abstract final class HcomTheme {
+  static const latinFontFamily = 'Cascadia Code';
+  static const chineseFontFamily = 'Noto Sans SC';
+  static const chineseFallback = <String>[chineseFontFamily];
   static const darkPrimary = Color(0xFFA8C7FA);
   static const darkSurface = Color(0xFF101418);
   static const darkSurfaceLowest = Color(0xFF0B0F13);
@@ -21,9 +24,12 @@ abstract final class HcomTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      fontFamily: 'Roboto',
+      fontFamily: latinFontFamily,
     );
     return base.copyWith(
+      textTheme: base.textTheme.apply(fontFamilyFallback: chineseFallback),
+      primaryTextTheme:
+          base.primaryTextTheme.apply(fontFamilyFallback: chineseFallback),
       scaffoldBackgroundColor: scheme.surface,
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.surfaceContainer,
@@ -31,7 +37,10 @@ abstract final class HcomTheme {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: TextStyle(
-            color: scheme.onSurface, fontSize: 22, fontWeight: FontWeight.w400),
+            color: scheme.onSurface,
+            fontSize: 22,
+            fontWeight: FontWeight.w400,
+            fontFamilyFallback: chineseFallback),
       ),
       cardTheme: CardThemeData(
         color: scheme.surfaceContainerLow,
@@ -50,7 +59,8 @@ abstract final class HcomTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: scheme.surfaceContainerHighest,
-        contentTextStyle: TextStyle(color: scheme.onSurface),
+        contentTextStyle: TextStyle(
+            color: scheme.onSurface, fontFamilyFallback: chineseFallback),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),

@@ -31,5 +31,8 @@ $cargo = "$env:CARGO_HOME\bin\cargo.exe"
 
 if ($Build) {
     & $cargo build --manifest-path core/Cargo.toml --release
-    & $flutter build windows
+    # Keep Flutter's bundled Material Icons font intact. Incremental icon-font
+    # subsetting can otherwise reuse a stale subset after new Icons.* glyphs
+    # are introduced, leaving valid Icon widgets visually blank in Release.
+    & $flutter build windows --no-tree-shake-icons
 }
